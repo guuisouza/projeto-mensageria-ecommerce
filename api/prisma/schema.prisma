@@ -1,13 +1,100 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model categoria {
+  id           String         @id @db.VarChar(50)
+  nome         String         @db.VarChar(100)
+  subcategoria subcategoria[]
+}
+
+model cliente {
+  id        Int      @id
+  nome      String   @db.VarChar(255)
+  email     String   @db.VarChar(255)
+  documento String   @db.VarChar(20)
+  pedido    pedido[]
+}
+
+model envio {
+  pedido_uuid   String  @id @db.Uuid
+  carrier       String  @db.VarChar(100)
+  service       String  @db.VarChar(50)
+  status        String  @db.VarChar(50)
+  tracking_code String? @db.VarChar(100)
+  pedido        pedido  @relation(fields: [pedido_uuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model item_pedido {
+  id          Int
+  pedido_uuid String  @db.Uuid
+  produto_id  Int
+  unit_price  Decimal @db.Decimal(10, 2)
+  quantity    Int
+  pedido      pedido  @relation(fields: [pedido_uuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+  produto     produto @relation(fields: [produto_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([pedido_uuid, id])
+}
+
+model metadata {
+  pedido_uuid String  @id @db.Uuid
+  source      String? @db.VarChar(50)
+  user_agent  String?
+  ip_address  String? @db.VarChar(50)
+  pedido      pedido  @relation(fields: [pedido_uuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model pagamento {
+  pedido_uuid    String  @id @db.Uuid
+  method         String  @db.VarChar(50)
+  status         String  @db.VarChar(50)
+  transaction_id String? @db.VarChar(100)
+  pedido         pedido  @relation(fields: [pedido_uuid], references: [uuid], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model pedido {
+  uuid        String        @id @db.Uuid
+  cliente_id  Int
+  seller_id   Int
+  created_at  DateTime      @db.Timestamptz(6)
+  channel     String        @db.VarChar(50)
+  status      String        @db.VarChar(50)
+  indexado_em DateTime      @default(now()) @db.Timestamptz(6)
+  envio       envio?
+  item_pedido item_pedido[]
+  metadata    metadata?
+  pagamento   pagamento?
+  cliente     cliente       @relation(fields: [cliente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  seller      seller        @relation(fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model produto {
+  id              Int           @id
+  nome            String        @db.VarChar(255)
+  subcategoria_id String        @db.VarChar(50)
+  item_pedido     item_pedido[]
+  subcategoria    subcategoria  @relation(fields: [subcategoria_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model seller {
+  id     Int      @id
+  nome   String   @db.VarChar(255)
+  cidade String   @db.VarChar(100)
+  estado String   @db.Char(2)
+  pedido pedido[]
+}
+
+model subcategoria {
+  id           String    @id @db.VarChar(50)
+  nome         String    @db.VarChar(100)
+  categoria_id String    @db.VarChar(50)
+  produto      produto[]
+  categoria    categoria @relation(fields: [categoria_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
